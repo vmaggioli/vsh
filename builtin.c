@@ -2,11 +2,13 @@
 #include <stdio.h>
 #include <unistd.h>
 
-char ***builtin_str = {{"cd"}, {"help", "?"}, {"exit"}};
-int (*builtin_func[])(char **) = {&vsh_cd, &vsh_help, &vsh_exit};
-int vsh_num_builtins(void) { return sizeof(builtin_str) / sizeof(char *); }
+char **builtin_str = {{"cd"}, {"help"}, {"?"}, {"exit"}, {"echo"}};
+int (*builtin_func[])(char **) = {&vsh_cd, &vsh_help, &vsh_help, &vsh_exit,
+                                  &vsh_echo};
+// TODO - Do this dynamically
+int vsh_num_builtins(void) { return 5; }
 
-char ***get_builtin_str(void) { return builtin_str; };
+char **get_builtin_str(void) { return builtin_str; };
 int (**get_builtin_func(void))(char **) { return builtin_func; }
 
 int vsh_cd(char **args) {
@@ -26,13 +28,23 @@ int vsh_help(char **args) {
   printf("The following are built in:\n");
 
   for (i = 0; i < vsh_num_builtins(); i++) {
-    for (j = 0; j < vsh_num_builtins(); j++) {
-      printf("  %s\n", builtin_str[i][j]);
-    }
+    printf("  %s\n", builtin_str[i]);
   }
 
   printf("Use the man command for information on other programs.\n");
   return 1;
+}
+
+// Only support echo of one arg - no flags
+int vsh_echo(char **args) {
+  // Command should be echo and a quoted set of words or single word
+  if (sizeof(args) != 2 * sizeof(char *)) {
+    fprintf(stderr, "Error running 'echo': invalid number of arguments\n");
+    return -1;
+  }
+
+  fprintf(stdout, "%s", args[1]);
+  return 0;
 }
 
 int vsh_exit(char **args) { return 0; }
