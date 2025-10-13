@@ -80,7 +80,7 @@ int vsh_launch(char **args) {
 }
 
 int vsh_execute(char **args) {
-  int i;
+  int i, j;
   char **builtin_str = get_builtin_str();
   int (**builtin_func)(char **) = get_builtin_func();
 
@@ -88,8 +88,10 @@ int vsh_execute(char **args) {
     return 1;
 
   for (i = 0; i < vsh_num_builtins(); i++) {
-    if (strcmp(args[1], builtin_str[i]) == 0)
-      return (*builtin_func[i])(args);
+    for (j = 0; j < vsh_num_builtins(); j++) {
+      if (strcmp(args[1], &builtin_str[i][j]) == 0)
+        return (*builtin_func[i])(args);
+    }
   }
 
   return vsh_launch(args);
