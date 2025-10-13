@@ -15,14 +15,13 @@ char *vsh_read_line(void) {
   char *line = NULL;
   size_t buffsize = 0;
 
-  while (1) {
-    if (!getline(&line, &buffsize, stdin)) {
-      if (feof(stdin))
-        exit(EXIT_SUCCESS);
-      else {
-        printf("Error while reading line\n");
-        exit(EXIT_FAILURE);
-      }
+  int check = getline(&line, &buffsize, stdin);
+  if (check == -1) {
+    if (feof(stdin))
+      exit(EXIT_SUCCESS);
+    else {
+      printf("Error while reading line\n");
+      exit(EXIT_FAILURE);
     }
   }
 }
@@ -46,15 +45,31 @@ char **vsh_split_line(char *line) {
   token = strtok(line, VSH_TOK_DELIM);
   while (token != NULL) {
     if (token[0] == '"' && currToken == NULL) {
+      printf("Here1\n");
       currToken = token;
     } else if (token[strlen(token) - 1] == '"' && currToken == NULL) {
+      printf("Here2\n");
       currToken = strcat(currToken, token);
       retTokens[retTokenPos++] = currToken;
       currToken = NULL;
-    } else if (currToken)
+    } else if (currToken) {
+      printf("Here3\n");
       currToken = strcat(currToken, token);
-    else
+    } else {
+      printf("Here4\n");
       retTokens[retTokenPos++] = token;
+    }
+
+    if (retTokenPos >= retTokBufSize) {
+      retTokBufSize += VSH_TOK_BUFSIZE;
+      retTokens = realloc(retTokens, retTokBufSize * sizeof(char *));
+      if (!retTokens) {
+        fprintf(stderr, "Error allocating return tokens buffer\n");
+        exit(EXIT_FAILURE);
+      }
+    }
+
+    token = tokens[strtokPos++];
 
     if (strtokPos >= strTokBufSize) {
       strTokBufSize += VSH_TOK_BUFSIZE;
@@ -64,17 +79,6 @@ char **vsh_split_line(char *line) {
         exit(EXIT_FAILURE);
       }
     }
-
-    if (retTokenPos >= retTokBufSize) {
-      retTokBufSize += VSH_TOK_BUFSIZE;
-      retTokens = realloc(tokens, retTokBufSize * sizeof(char *));
-      if (!retTokens) {
-        fprintf(stderr, "Error allocating return tokens buffer\n");
-        exit(EXIT_FAILURE);
-      }
-    }
-
-    token = tokens[strtokPos++];
   }
 
   if (currToken != NULL)
@@ -117,6 +121,7 @@ int vsh_execute(char **args) {
     return 1;
 
   for (i = 0; i < vsh_num_builtins(); i++) {
+    printf("%s:%s\n", args[1], builtin_str[i]);
     if (strcmp(args[1], builtin_str[i]) == 0)
       return (*builtin_func[i])(args);
   }

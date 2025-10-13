@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-char **builtin_str = {{"cd"}, {"help"}, {"?"}, {"exit"}, {"echo"}};
+char *builtin_str[] = {"cd", "help", "?", "exit", "echo"};
 int (*builtin_func[])(char **) = {&vsh_cd, &vsh_help, &vsh_help, &vsh_exit,
                                   &vsh_echo};
 // TODO - Do this dynamically
