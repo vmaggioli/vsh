@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,30 +9,32 @@
 
 #define VSH_RL_BUFFERSIZE 1024;
 #define VSH_TOK_DELIM " \t\r\n\a"
-#define vsh_TOK_BUFSIZE 24
+#define VSH_TOK_BUFSIZE 24
 
 char *vsh_read_line(void) {
   char *line = NULL;
   size_t buffsize = 0;
 
-  while (1) {
-    if (!getline(&line, &buffsize, stdin)) {
-      if (feof(stdin))
-        exit(EXIT_SUCCESS);
-      else {
-        printf("Error while reading line\n");
-        exit(EXIT_FAILURE);
-      }
+  int check = getline(&line, &buffsize, stdin);
+  if (check == -1) {
+    if (feof(stdin))
+      exit(EXIT_SUCCESS);
+    else {
+      printf("Error while reading line\n");
+      exit(EXIT_FAILURE);
     }
   }
+
+  return line;
 }
 
 // Assumes no quotes to group tokens
 char **vsh_split_line(char *line) {
-  int buffsize = vsh_TOK_BUFSIZE;
+  int bufferSize = VSH_TOK_BUFSIZE;
   int position = 0;
   char *token;
-  char **tokens = malloc(sizeof(char *) * buffsize);
+  char **tokens = malloc(sizeof(char *) * bufferSize);
+  char *currToken = NULL;
 
   if (!tokens) {
     fprintf(stderr, "Error allocating tokens buffer\n");
@@ -40,17 +43,32 @@ char **vsh_split_line(char *line) {
 
   token = strtok(line, VSH_TOK_DELIM);
   while (token != NULL) {
-    tokens[position++] = token;
+    if (*token == '"' && !currToken) {
+      currToken = token;
+    } else if (token[strlen(token) - 1] == '"' && !currToken) {
+      currToken = strcat(currToken, token);
+      tokens[position++] = currToken;
+      currToken = NULL;
+    } else if (currToken) {
+      currToken = strcat(currToken, token);
+    } else {
+      tokens[position++] = token;
+    }
 
-    if (position >= buffsize) {
-      buffsize += vsh_TOK_BUFSIZE;
-      tokens = realloc(tokens, buffsize * sizeof(char *));
+    if (position >= bufferSize) {
+      bufferSize += VSH_TOK_BUFSIZE;
+      tokens = realloc(tokens, bufferSize * sizeof(char *));
       if (!tokens) {
-        fprintf(stderr, "Error allocating tokens buffer\n");
+        fprintf(stderr, "Error allocating return tokens buffer\n");
         exit(EXIT_FAILURE);
       }
     }
+
+    token = strtok(NULL, VSH_TOK_DELIM);
   }
+
+  if (currToken != NULL)
+    tokens[position++] = currToken;
 
   tokens[position] = NULL;
   return tokens;
@@ -88,10 +106,8 @@ int vsh_execute(char **args) {
     return 1;
 
   for (i = 0; i < vsh_num_builtins(); i++) {
-    for (j = 0; j < vsh_num_builtins(); j++) {
-      if (strcmp(args[1], &builtin_str[i][j]) == 0)
-        return (*builtin_func[i])(args);
-    }
+    if (strcmp(args[0], builtin_str[i]) == 0)
+      return (*builtin_func[i])(args);
   }
 
   return vsh_launch(args);

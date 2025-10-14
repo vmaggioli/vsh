@@ -9,7 +9,7 @@ vsh.o:
 	$(CC) $(CFLAGS) -c main.c -o vsh.o
 
 builtin.o:
-	$(CC) $(CFLAGS) -c builtin.c  -o builtin.o
+	$(CC) $(CFLAGS) -c builtin.c -o builtin.o
 
 clean:
 	rm -f ${TARGETS}
