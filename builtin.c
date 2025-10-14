@@ -37,13 +37,19 @@ int vsh_help(char **args) {
 
 // Only support echo of one arg - no flags
 int vsh_echo(char **args) {
+  int count = 0;
+  char *check = *args;
   // Command should be echo and a quoted set of words or single word
-  if (sizeof(args) != 2 * sizeof(char *)) {
+  while (check && count != 3) {
+    count++;
+    check = *(args + count);
+  }
+  if (count != 2) {
     fprintf(stderr, "Error running 'echo': invalid number of arguments\n");
     return -1;
   }
 
-  fprintf(stdout, "%s", args[1]);
+  fprintf(stdout, "%s\n", args[1]);
   return 0;
 }
 
