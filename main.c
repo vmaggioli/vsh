@@ -1,3 +1,4 @@
+#include <curses.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,28 +8,35 @@
 
 #include "builtin.h"
 
-#define VSH_RL_BUFFERSIZE 1024;
+#define VSH_RL_BUFFERSIZE 1024
 #define VSH_TOK_DELIM " \t\r\n\a"
 #define VSH_TOK_BUFSIZE 24
 
 char *vsh_read_line(void) {
-  char *line = NULL;
-  size_t buffsize = 0;
+  int ch, position;
+  int buffersize = VSH_RL_BUFFERSIZE;
+  char *line = malloc(buffersize * sizeof(char *));
+  char *retLine = line;
 
-  int check = getline(&line, &buffsize, stdin);
-  if (check == -1) {
-    if (feof(stdin))
-      exit(EXIT_SUCCESS);
-    else {
-      printf("Error while reading line\n");
-      exit(EXIT_FAILURE);
+  // TODO -- support backspace
+  while ((ch = getch()) != '\n') {
+    addch(ch);
+    *line = ch;
+    position++;
+
+    if (position == buffersize) {
+      buffersize += VSH_RL_BUFFERSIZE;
+      line = realloc(line, buffersize);
     }
+
+    line++;
   }
 
-  return line;
+  line = NULL;
+  addch('\n');
+  return retLine;
 }
 
-// Assumes no quotes to group tokens
 char **vsh_split_line(char *line) {
   int bufferSize = VSH_TOK_BUFSIZE;
   int position = 0;
@@ -37,7 +45,8 @@ char **vsh_split_line(char *line) {
   char *currToken = NULL;
 
   if (!tokens) {
-    fprintf(stderr, "Error allocating tokens buffer\n");
+    printw("Error allocating tokens buffer\n");
+    refresh();
     exit(EXIT_FAILURE);
   }
 
@@ -59,7 +68,8 @@ char **vsh_split_line(char *line) {
       bufferSize += VSH_TOK_BUFSIZE;
       tokens = realloc(tokens, bufferSize * sizeof(char *));
       if (!tokens) {
-        fprintf(stderr, "Error allocating return tokens buffer\n");
+        printw("Error allocating return tokens buffer\n");
+        refresh();
         exit(EXIT_FAILURE);
       }
     }
@@ -119,17 +129,19 @@ void vsh_loop() {
   int status;
 
   do {
-    printf("> ");
+    printw("> ");
     line = vsh_read_line();
     args = vsh_split_line(line);
     status = vsh_execute(args);
-
-    free(line);
-    free(args);
   } while (status);
 }
 
 int main(int argc, char *argv[]) {
+  initscr();
+  cbreak();
+  noecho();
+  intrflush(stdscr, FALSE);
+  keypad(stdscr, TRUE);
   vsh_loop();
   return EXIT_SUCCESS;
 }
