@@ -11,6 +11,18 @@
 #define VSH_RL_BUFFERSIZE 1024
 #define VSH_TOK_DELIM " \t\r\n\a"
 #define VSH_TOK_BUFSIZE 24
+#define PROMPT "> "
+
+bool delete_char(void) {
+  int y, x;
+  getyx(stdscr, y, x);
+  if (x <= strlen(PROMPT))
+    return false;
+  move(y, x - 1);
+  delch();
+  refresh();
+  return true;
+}
 
 char *vsh_read_line(void) {
   int ch, position;
@@ -18,9 +30,19 @@ char *vsh_read_line(void) {
   char *line = malloc(buffersize * sizeof(char *));
   char *retLine = line;
 
-  // TODO -- support backspace
   while ((ch = getch()) != '\n') {
+    if (ch == KEY_BACKSPACE) {
+      if (!delete_char())
+        continue;
+      *line = '\0';
+      line--;
+      position--;
+      continue;
+    }
+
     addch(ch);
+    refresh();
+
     *line = ch;
     position++;
 
@@ -34,6 +56,7 @@ char *vsh_read_line(void) {
 
   line = NULL;
   addch('\n');
+  refresh();
   return retLine;
 }
 
