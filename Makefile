@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -g
+CFLAGS = -g -lcurses
 TARGETS = vsh vsh.o builtin.o
 
 vsh: vsh.o builtin.o
