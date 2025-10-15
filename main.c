@@ -12,15 +12,34 @@
 #define VSH_TOK_DELIM " \t\r\n\a"
 #define VSH_TOK_BUFSIZE 24
 
+void delete_char(void) {
+  int y, x;
+  getyx(stdscr, y, x);
+  if (x > 0) {
+    move(y, x - 1);
+    delch();
+  }
+  refresh();
+}
+
 char *vsh_read_line(void) {
   int ch, position;
   int buffersize = VSH_RL_BUFFERSIZE;
   char *line = malloc(buffersize * sizeof(char *));
   char *retLine = line;
 
-  // TODO -- support backspace
-  while ((ch = getch()) != '\n') {
+  while ((ch = getch()) != KEY_ENTER) {
+    if (ch == KEY_BACKSPACE) {
+      *line = '\0';
+      line--;
+      position--;
+      delete_char();
+      continue;
+    }
+
     addch(ch);
+    refresh();
+
     *line = ch;
     position++;
 
@@ -34,6 +53,7 @@ char *vsh_read_line(void) {
 
   line = NULL;
   addch('\n');
+  refresh();
   return retLine;
 }
 
