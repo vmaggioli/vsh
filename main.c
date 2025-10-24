@@ -1,5 +1,6 @@
 #include <curses.h>
 #include <dirent.h>
+#include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,28 +27,35 @@ bool delete_char(void) {
 }
 
 void print_autocomplete_suggestions(char *command) {
-  char *path;
-  char *pathToken;
+  char *path, *pathToken, *firstMatch;
   const char *delim = ":";
   DIR *dir;
   struct dirent *directory;
   int commandLength = strlen(command);
 
-  path = getenv("PATH");
-  while ((pathToken = strtok(path, delim)) != NULL) {
+  path = strdup(getenv("PATH"));
+  pathToken = strtok(path, delim);
+  printw("\n");
+  while (pathToken != NULL) {
     dir = opendir(pathToken);
     if (!dir) {
-      printw("Error opening \"%s\"\n", pathToken);
+      printw("\nError opening \"%s\"\n", pathToken);
+      printw("%s\n", errno ? strerror(errno) : "Unknown error");
+      closedir(dir);
       refresh();
       return;
     }
 
     while ((directory = readdir(dir)) != NULL) {
       if (strncmp(directory->d_name, command, commandLength) == 0)
-        printw("%s\t", directory->d_name);
+        printw("%s  ", directory->d_name);
     }
+
+    pathToken = strtok(NULL, delim);
+    closedir(dir);
   }
 
+  printw("\n");
   refresh();
 }
 
@@ -62,17 +70,15 @@ char *vsh_read_line(void) {
     case KEY_BACKSPACE: {
       if (!delete_char())
         continue;
-      *line = '\0';
       line--;
+      *line = '\0';
       position--;
       continue;
     }
-    case KEY_STAB: {
+    case '\t': {
       print_autocomplete_suggestions(retLine);
-      printw("%s %s\n", PROMPT, retLine);
-      *line = '\0';
-      line--;
-      position--;
+      printw("\n%s %s", PROMPT, retLine);
+      refresh();
       continue;
     }
     }
@@ -186,7 +192,7 @@ int vsh_execute(char **args) {
 void vsh_loop() {
   char *line;
   char **args;
-  int status;
+  int status, index;
 
   do {
     printw(PROMPT);
@@ -195,12 +201,12 @@ void vsh_loop() {
     line = vsh_read_line();
     args = vsh_split_line(line);
     status = vsh_execute(args);
-    int index = 0;
-    while (args[index] != NULL)
-      free(args[index++]);
-    free(args);
-    args = NULL;
   } while (status);
+
+  index = 0;
+  while (args[index] != NULL)
+    free(args[index++]);
+  free(args);
 }
 
 int main(int argc, char *argv[]) {
