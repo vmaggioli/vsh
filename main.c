@@ -1,4 +1,6 @@
 #include <curses.h>
+#include <dirent.h>
+#include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,6 +26,39 @@ bool delete_char(void) {
   return true;
 }
 
+void print_autocomplete_suggestions(char *command) {
+  char *path, *pathToken, *firstMatch;
+  const char *delim = ":";
+  DIR *dir;
+  struct dirent *directory;
+  int commandLength = strlen(command);
+
+  path = strdup(getenv("PATH"));
+  pathToken = strtok(path, delim);
+  printw("\n");
+  while (pathToken != NULL) {
+    dir = opendir(pathToken);
+    if (!dir) {
+      printw("\nError opening \"%s\"\n", pathToken);
+      printw("%s\n", errno ? strerror(errno) : "Unknown error");
+      closedir(dir);
+      refresh();
+      return;
+    }
+
+    while ((directory = readdir(dir)) != NULL) {
+      if (strncmp(directory->d_name, command, commandLength) == 0)
+        printw("%s  ", directory->d_name);
+    }
+
+    pathToken = strtok(NULL, delim);
+    closedir(dir);
+  }
+
+  printw("\n");
+  refresh();
+}
+
 char *vsh_read_line(void) {
   int ch, position;
   int buffersize = VSH_RL_BUFFERSIZE;
@@ -31,13 +66,21 @@ char *vsh_read_line(void) {
   char *retLine = line;
 
   while ((ch = getch()) != '\n') {
-    if (ch == KEY_BACKSPACE) {
+    switch (ch) {
+    case KEY_BACKSPACE: {
       if (!delete_char())
         continue;
-      *line = '\0';
       line--;
+      *line = '\0';
       position--;
       continue;
+    }
+    case '\t': {
+      print_autocomplete_suggestions(retLine);
+      printw("\n%s %s", PROMPT, retLine);
+      refresh();
+      continue;
+    }
     }
 
     addch(ch);
@@ -149,14 +192,21 @@ int vsh_execute(char **args) {
 void vsh_loop() {
   char *line;
   char **args;
-  int status;
+  int status, index;
 
   do {
-    printw("> ");
+    printw(PROMPT);
+    refresh();
+    // Can't free 'line' - why?
     line = vsh_read_line();
     args = vsh_split_line(line);
     status = vsh_execute(args);
   } while (status);
+
+  index = 0;
+  while (args[index] != NULL)
+    free(args[index++]);
+  free(args);
 }
 
 int main(int argc, char *argv[]) {
